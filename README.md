@@ -11,7 +11,7 @@ cluster, deployed the GitOps way with Argo CD.
 | 1 – Cluster as code | Terraform: kind cluster (1 control-plane + 2 workers), Argo CD + Traefik via Helm; `apply` / `destroy` | done (`apply` + clean `plan` verified; `destroy` not run, the cluster must stay up) |
 | 2 – GitOps | `k8s/` manifests (2+ replicas, probes, requests/limits, Ingress), Argo CD Application syncs them; image pulled from public GHCR (instead of the original `kind load` plan, so CI/CD needs no pull secret) | done |
 | 3 – CI/CD | GitHub Actions → GHCR tagged by SHA, workflow bumps tag in git, Argo CD rolls out; zero-downtime check | done (3443 requests during a CI rollout, 0 failed, version change seen) |
-| Bonus (if time) | HPA (2–5), Prometheus/Grafana via Argo CD, EKS production notes | todo |
+| Bonus (if time) | HPA (2–5), Prometheus/Grafana via Argo CD, EKS production notes | EKS notes: done; HPA, Prometheus/Grafana: todo |
 
 ## Tools chosen
 
@@ -119,11 +119,24 @@ Verified:
 - Message changed and pushed (`8d6f11d`) → CI green → bot commit `8b8737d` → Argo CD rolled out the new image → 3497 requests, 0 failed, version switched mid-loop (before the two-version check existed).
 - With the unit-test step and the two-version check (`4f2fcf4`): CI ran `2 passed`, then built and pushed → bot commit `5aa1efe` → Argo CD rolled out → **3443 requests, 0 failed, 2 version(s) seen, exit 0**. Raw output: [tests/zero_downtime_result.txt](tests/zero_downtime_result.txt).
 
+## Running on Amazon EKS in Production
+
+Proposed changes for a production deployment. None of this is installed in the current project.
+
+1. **Infrastructure:** replace kind with Amazon EKS in a VPC that spans at least two Availability Zones. Load balancers go in public subnets, worker nodes in private subnets, with a NAT Gateway for outbound internet access where needed.
+2. **Compute and availability:** EKS Managed Node Groups. Topology Spread Constraints spread the pods across nodes and Availability Zones. Cluster Autoscaler or Karpenter adds node capacity on demand.
+3. **Networking:** replace the local NodePort with an Application Load Balancer created by the AWS Load Balancer Controller from the existing Ingress, serving HTTPS with a certificate from AWS Certificate Manager.
+4. **Container registry:** store images in Amazon ECR instead of GHCR. Nodes get an IAM permission that allows pulling from ECR only.
+5. **Security:** IAM roles with least privilege; EKS Pod Identity when the app needs AWS permissions; AWS Secrets Manager for secrets; Security Groups to restrict traffic between the load balancer, the nodes and other services.
+6. **Terraform:** keep managing all infrastructure with Terraform, with state in an S3 backend with locking, encryption and restricted access instead of a local state file.
+7. **GitOps:** keep the same flow. GitHub Actions runs the tests, builds the image and pushes it to ECR (authenticating with a short-lived IAM role via OIDC, no stored AWS keys), then updates the image tag in git. Argo CD syncs the manifests and deploys to EKS. CI keeps no `kubectl` access to the cluster.
+8. **Monitoring:** Prometheus and Grafana for Kubernetes and application metrics, plus CloudWatch for logs and alerts.
+
 ## Submission summary
 
-**Finished:** Part 0, Part 1, Part 2 and Part 3, each verified as described above. The cluster is left running.
+**Finished:** Part 0, Part 1, Part 2 and Part 3, each verified as described above, plus the EKS production notes bonus. The cluster is left running.
 
-**Missing:** the bonuses (HPA, Prometheus/Grafana via Argo CD, EKS notes). `terraform destroy` is written but was not run on the final cluster, which must stay up.
+**Missing:** the HPA and Prometheus/Grafana bonuses. `terraform destroy` is written but was not run on the final cluster, which must stay up.
 
 **One decision and why:** the image comes from a public GHCR package, and CI deploys by committing the new tag to git. The first plan was `kind load` of a local image. Our GitHub-hosted runner cannot reach the local kind cluster directly in this setup, so we chose GHCR plus GitOps through Argo CD. Alternatives exist, such as a self-hosted runner on this machine, but this solution does not need them. A private package would need a pull secret in the cluster. With a public image and a commit to git, the cluster needs no credentials, CI needs no access to the cluster, and git history shows what is deployed.
 

@@ -178,3 +178,23 @@ Push ל-main → GitHub Actions בונה Docker Image → העלאה ל-GHCR ע�
 
 אל תוסיף פיצ'רים חדשים. הצג לי סיכום מצב סופי בלבד.
 ```
+
+## 12
+
+```
+הוסף ל-README סעיף בשם "Running on Amazon EKS in Production".
+כתוב בו בקצרה את השינויים הבאים שהייתי מבצע כדי להעביר את הפרויקט הנוכחי לסביבת Production:
+
+1. Infrastructure: מחליף את kind ב-Amazon EKS, עם VPC הפרוס על לפחות שתי Availability Zones. ה-Load Balancer יהיה ב-Public Subnets וה-Worker Nodes ב-Private Subnets, עם NAT Gateway ליציאה לאינטרנט לפי הצורך.
+2. Compute & Availability: משתמש ב-EKS Managed Node Groups, מפזר Pods בין Nodes ו-Availability Zones באמצעות Topology Spread Constraints, ומגדיר Cluster Autoscaler או Karpenter להגדלת קיבולת ה-Nodes לפי הצורך.
+3. Networking: מחליף את ה-NodePort המקומי ב-Application Load Balancer דרך AWS Load Balancer Controller, עם HTTPS ותעודת TLS באמצעות AWS Certificate Manager.
+4. Container Registry: משתמש ב-Amazon ECR לאחסון Docker Images, עם הרשאות IAM מתאימות למשיכת Images.
+5. Security: משתמש ב-IAM Roles עם Least Privilege, ב-EKS Pod Identity להרשאות AWS של האפליקציה לפי הצורך, ב-Secrets Manager לסודות וב-Security Groups להגבלת תעבורה.
+6. Terraform: ממשיך לנהל את התשתית באמצעות Terraform, אבל מעביר את ה-State ל-S3 Backend עם נעילה, הצפנה והרשאות גישה מצומצמות.
+7. GitOps: משאיר את GitHub Actions לבדיקות, Build ו-Push ל-ECR, ואת ArgoCD לסנכרון ה-Manifests ולפריסה ל-EKS, ללא גישת kubectl מה-CI לקלאסטר.
+8. Monitoring: מוסיף Prometheus ו-Grafana למטריקות Kubernetes והאפליקציה, יחד עם CloudWatch ללוגים ולהתראות.
+
+כתוב את הסעיף באנגלית מקצועית ותמציתית, כך שיהיה ברור שמדובר בשינויים מוצעים ל-Production ולא ברכיבים שכבר הותקנו.
+אל תשנה שום קובץ אחר מלבד README ו-ai-prompts.md, ואל תשנה את התשתית הקיימת.
+עדכן את סטטוס בונוס ה-EKS ל-Done, תעד את הפרומפט, בצע Commit ו-Push, והשאר את הקלאסטר פועל.
+```
