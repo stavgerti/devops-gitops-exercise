@@ -1,0 +1,9 @@
+__pycache__/
+.pytest_cache/
+.venv/
+# Terraform state and caches (local state only; never commit)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*-kubeconfig
