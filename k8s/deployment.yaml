@@ -41,7 +41,8 @@ spec:
             preStop:
               exec:
                 command: ["sleep", "5"]
-          # Liveness/readiness only start once this passes, so a slow start (busy node) is not killed. Allows up to 60s.
+          # startupProbe: runs first; readiness and liveness wait until it passes. Allows a slow start up to
+          # 60s (30 x 2s); if it never passes, the container is restarted.
           startupProbe:
             httpGet:
               path: /healthz
@@ -49,12 +50,14 @@ spec:
             periodSeconds: 2
             timeoutSeconds: 3
             failureThreshold: 30
+          # readinessProbe: on failure the pod stops getting traffic from the Service, but is not restarted.
           readinessProbe:
             httpGet:
               path: /healthz
               port: 8080
             periodSeconds: 5
             timeoutSeconds: 3
+          # livenessProbe: on failure the container is restarted.
           livenessProbe:
             httpGet:
               path: /healthz
