@@ -7,7 +7,7 @@ cluster, deployed the GitOps way with Argo CD.
 
 | Part | Steps | Status |
 |------|-------|--------|
-| 0 – Setup | Tools, GitHub repo, this README, Flask app (`/` HTML, `/healthz`), non-root Dockerfile, local build + run | in progress |
+| 0 – Setup | Tools, GitHub repo, this README, Flask app (`/` HTML, `/healthz`), non-root Dockerfile, local build + run | done |
 | 1 – Cluster as code | Terraform: kind cluster (1 control-plane + 2 workers), Argo CD + Traefik via Helm; `apply` / `destroy` | todo |
 | 2 – GitOps | `k8s/` manifests (2+ replicas, probes, requests/limits, Ingress), Argo CD Application syncs them; image loaded with `kind load` | todo |
 | 3 – CI/CD (if time) | GitHub Actions → GHCR tagged by SHA, workflow bumps tag in git, Argo CD rolls out; zero-downtime check | todo |
@@ -42,4 +42,10 @@ docker run --rm -p 8080:8080 gitops-app:dev
 # http://localhost:8080  and  http://localhost:8080/healthz
 ```
 
-Tests: `cd app && python -m pytest -q`
+Tests (run in a throwaway container, nothing installed on the host):
+
+```bash
+docker run --rm -v "$PWD/app:/src:ro" -w /src python:3.13-slim sh -c "pip install -q -r requirements.txt pytest && python -m pytest -q -p no:cacheprovider"
+```
+
+Verified: `/` → 200 `text/html` with message, version and container hostname; `/healthz` → 200; `id` in the container → `uid=10001(appuser)`; 2 unit tests pass.

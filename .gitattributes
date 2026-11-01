@@ -1,0 +1,2 @@
+# Keep LF everywhere: files are consumed by Linux containers and CI.
+* text=auto eol=lf
