@@ -27,6 +27,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
 
+      # Fail before anything is pushed or deployed. Same Python image as the Dockerfile.
+      - name: Unit tests
+        run: >
+          docker run --rm -v "$PWD/app:/src:ro" -w /src python:3.13-slim
+          sh -c "pip install -q -r requirements.txt pytest==9.2.0 && python -m pytest -q -p no:cacheprovider"
+
       - uses: docker/login-action@v4.7.0
         with:
           registry: ghcr.io

@@ -2,7 +2,8 @@
 
 Start it, trigger a rollout, then stop it with Ctrl+C (or pass a duration in seconds
 and it stops by itself). Prints every time the version or pod seen by the client
-changes, and a summary at the end. Exit code 1 if any request failed.
+changes, and a summary at the end. Exit code 1 if any request failed, or if no version
+change was seen (the loop did not cover a rollout).
 Run from the repo root: python tests/zero_downtime.py [url] [seconds]
 """
 import re
@@ -32,5 +33,8 @@ try:
 except KeyboardInterrupt:
     pass
 
-print(f"\n{total} requests, {failed} failed")
-sys.exit(1 if failed else 0)
+versions = {v for v, _ in seen}
+print(f"\n{total} requests, {failed} failed, {len(versions)} version(s) seen")
+if len(versions) < 2:
+    print("FAIL: no version change seen, so the loop did not cover a rollout")
+sys.exit(1 if failed or len(versions) < 2 else 0)
