@@ -9,8 +9,8 @@ cluster, deployed the GitOps way with Argo CD.
 |------|-------|--------|
 | 0 – Setup | Tools, GitHub repo, this README, Flask app (`/` HTML, `/healthz`), non-root Dockerfile, local build + run | done |
 | 1 – Cluster as code | Terraform: kind cluster (1 control-plane + 2 workers), Argo CD + Traefik via Helm; `apply` / `destroy` | todo |
-| 2 – GitOps | `k8s/` manifests (2+ replicas, probes, requests/limits, Ingress), Argo CD Application syncs them; image loaded with `kind load` | todo |
-| 3 – CI/CD (if time) | GitHub Actions → GHCR tagged by SHA, workflow bumps tag in git, Argo CD rolls out; zero-downtime check | todo |
+| 2 – GitOps | `k8s/` manifests (2+ replicas, probes, requests/limits, Ingress), Argo CD Application syncs them; image pulled from public GHCR (changed from the original `kind load` plan, see decisions) | todo |
+| 3 – CI/CD | GitHub Actions → GHCR tagged by SHA, workflow bumps tag in git, Argo CD rolls out; zero-downtime check | todo |
 | Bonus (if time) | HPA (2–5), Prometheus/Grafana via Argo CD, EKS production notes | todo |
 
 ## Tools chosen
@@ -24,6 +24,16 @@ cluster, deployed the GitOps way with Argo CD.
 | Ingress | Traefik (Helm chart) | Simple Helm install, standard `Ingress` support |
 | App | Python 3.13 + Flask, served by gunicorn | Small, readable; gunicorn instead of the Flask dev server |
 | Editor / agent | VS Code + Claude Code | Prompts saved in [ai-prompts.md](ai-prompts.md) |
+
+## Delivery flow
+
+```
+git push main ─▶ GitHub Actions: build image ─▶ push ghcr.io/stavgerti/devops-gitops-exercise:<commit SHA>
+                                 └─▶ commit "ci: deploy <sha>" rewriting the image: line in k8s/deployment.yaml
+Argo CD (polls git every 60s) ─▶ syncs k8s/ ─▶ Deployment rolling update (maxSurge 1, maxUnavailable 0)
+```
+
+CI never talks to the cluster (no `kubectl apply`); git is the only source of truth.
 
 ## Part 0 – the app
 

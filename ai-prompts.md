@@ -1,32 +1,87 @@
 # AI prompts
 
-Prompts given to the AI agent (Claude Code) during the exercise, in order.
-Originals were in Hebrew; translated to English here.
+Prompts given to the AI agent (Claude Code) during the exercise, in order, verbatim (originally written in Hebrew).
 
-## 1 – Plan
+## 1
 
-> This is a DevOps assignment I got from EX.CO. I have two hours to submit.
-> Read the attached requirements document fully. I work on Windows with Docker Desktop.
-> The goal is a simple, correct solution that is easy to explain.
-> Prepare a short work plan in order of the requirements, prioritising Part 0, 1 and 2;
-> Part 3 and bonuses only if time remains.
-> Open a new repo for the assignment and start a README with the plan and technical choices.
-> Record the prompts in ai-prompts.md and commit as you progress.
-> Test every step before moving on. Briefly explain technical decisions and changes so I can
-> present them in the code review.
-> Don't do destructive actions or change external permissions without my approval.
-> Show a short execution plan first, then we start.
+```
+זו מטלת DevOps שקיבלתי מ-EX.CO. יש לי שעתיים להגשת הפתרון.
 
-## 2 – Approve plan with changes, start Part 0
+קרא את מסמך הדרישות המצורף במלואו.
 
-> I approve the plan with these changes:
-> - Use Python Flask for the app and Traefik as the ingress controller.
-> - Start by checking Docker Desktop and starting it if needed.
-> - Check whether an earlier kind cluster still exists or uses resources. Don't delete it without approval.
-> - Create a new public repo, after a secrets check and setting a GitHub noreply email for new commits.
-> - In Part 2 use a local Docker image via `kind load`, to avoid registry and permission delays.
-> - Document prompts and decisions and commit as you go.
->
-> Move fast in order of the requirements. Don't stop for approval on every routine file or action.
-> Stop only before destructive actions, exposing sensitive data, or significant permission changes.
-> Start Part 0 now, test, and show me a short summary when done.
+אני עובד על Windows עם Docker Desktop. המטרה היא לבנות פתרון פשוט, תקין וקל להסבר.
+
+הכן תוכנית עבודה קצרה לפי סדר הדרישות, עם עדיפות ל-Part 0, Part 1 ו-Part 2. ניגש ל-Part 3 ולבונוסים רק אם יישאר זמן.
+
+פתח ריפו חדש עבור המטלה והתחל README עם תוכנית העבודה והבחירות הטכניות.
+
+תעד ב-ai-prompts.md את הפרומפטים שניתנו במסגרת העבודה על המטלה, ובצע commits לאורך ההתקדמות.
+
+בדוק כל שלב לפני המעבר לשלב הבא. הסבר בקצרה את ההחלטות הטכניות ואת השינויים כדי שאוכל להבין ולהציג אותם ב-Code Review.
+
+אל תבצע פעולות הרסניות או שינויים בהרשאות חיצוניות בלי אישורי.
+
+הצג תחילה תוכנית ביצוע קצרה, ואז נתחיל.
+```
+
+## 2
+
+```
+מאשר את התוכנית עם השינויים הבאים:
+
+* בחר ב-Python Flask לאפליקציה וב-Traefik כ-Ingress Controller.
+* התחל בבדיקת Docker Desktop והפעלתו אם צריך.
+* בדוק אם קלאסטר kind קודם עדיין קיים או צורך משאבים. אל תמחק אותו ללא אישור.
+* צור ריפו חדש וציבורי למטלה, אחרי בדיקת סודות והגדרת GitHub noreply עבור Commits חדשים.
+* ב-Part 2 השתמש ב-Docker Image מקומי באמצעות kind load, כדי לא להתעכב על Registry והרשאות.
+* תעד את הפרומפטים וההחלטות ובצע commits לאורך ההתקדמות.
+
+חשוב לי שנתקדם במהירות לפי סדר הדרישות. אל תעצור לקבלת אישור על כל קובץ או פעולה שגרתית. עצור רק לפני פעולות הרסניות, חשיפת מידע רגיש או שינוי הרשאות משמעותי.
+התחל עכשיו ב-Part 0, בצע בדיקות והצג לי סיכום קצר כשהוא הושלם.
+```
+
+## 3
+
+```
+מאשר לעצור את שלושת הקונטיינרים של הקלאסטר הקודם, devops-exercise, כדי לפנות משאבים.
+
+השתמש ב-docker stop בלבד. אל תמחק את הקלאסטר ואל תריץ terraform destroy.
+
+לאחר מכן בדוק שהקונטיינרים נעצרו ושיש מספיק זיכרון פנוי, והמשך ל-Part 1. תן לקלאסטר החדש שם שונה כדי למנוע התנגשויות.
+
+**חשוב: אני רוצה להשלים גם את Part 3 עם CI/CD מלא.**
+
+המטרה היא להגיע לתהליך אוטומטי:
+
+Push ל-main → GitHub Actions בונה Docker Image → העלאה ל-GHCR עם Commit SHA → עדכון ה-Image Tag ב-Git → ArgoCD מסנכרן → Kubernetes מבצע Rolling Update.
+
+לכן תכנן כבר עכשיו את התשתית וה-Manifests כך שיתאימו לתהליך הזה.
+
+אני מעדיף להשתמש ב-GHCR Package ציבורי כדי להימנע מהסתבכות עם הרשאות משיכה בקלאסטר. ודא בפועל שה-Image נגיש ללא אימות ושאין בו מידע רגיש.
+
+סדר העדיפויות הוא להשלים Part 1 ו-Part 2 בצורה תקינה, ואז להתקדם מיד ל-Part 3. אל תשקיע זמן בבונוסים לפני שה-CI/CD עובד.
+
+המשך בביצוע, בדוק כל שלב ותעד את העבודה והפרומפטים כנדרש.
+```
+
+## 4
+
+```
+שים לב שהפתרון שאנחנו מגישים צריך להיות עצמאי ומובן במלואו.
+
+אם אתה משתמש בקוד קיים מפרויקט אחר, ודא שהוא מתאים לדרישות הנוכחיות, בדוק אותו מחדש ותעד את השימוש החוזר באופן מדויק.
+
+אל תעתיק רכיבים נוספים מפרויקטים קודמים בלי לציין זאת. המשך לעבוד לפי הדרישות של המטלה הנוכחית.
+```
+
+## 5
+
+```
+עצור את הוספת טבלת ה-Reuse ל-README. היא לא נדרשת במסמך המטלה.
+
+מכאן והלאה עבוד רק מתוך הריפו הנוכחי ומסמך הדרישות שקיבלתי. אל תקרא או תעתיק קבצים נוספים מפרויקטים קודמים.
+
+השאר את תיעוד הפרומפטים המקורי מדויק ומלא.
+
+התמקד עכשיו בבדיקת Terraform, בהשלמת ArgoCD וב-CI/CD. אל תבצע שינויים נוספים בתיעוד שאינם נדרשים למטלה.
+```
