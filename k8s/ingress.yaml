@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+spec:
+  ingressClassName: traefik
+  # No host rule: any hostname works, so http://localhost:8088 opens it without editing the hosts file.
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

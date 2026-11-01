@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Start a new pod before removing an old one, so serving capacity never drops below 2.
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: web
+          # Rewritten by .github/workflows/ci.yaml on every deploy (tag = commit SHA). Public GHCR image, no pull secret.
+          image: ghcr.io/stavgerti/devops-gitops-exercise:bootstrap
+          ports:
+            - containerPort: 8080
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          # Keep serving for a few seconds so Traefik stops routing here before SIGTERM arrives.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
