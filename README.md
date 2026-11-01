@@ -30,7 +30,7 @@ cluster, deployed the GitOps way with Argo CD.
 ```
 git push main ─▶ GitHub Actions: build image ─▶ push ghcr.io/stavgerti/devops-gitops-exercise:<commit SHA>
                                  └─▶ commit "ci: deploy <sha>" rewriting the image: line in k8s/deployment.yaml
-Argo CD (polls git every 60s) ─▶ syncs k8s/ ─▶ Deployment rolling update (maxSurge 1, maxUnavailable 0)
+Argo CD (checks git every 60s + jitter) ─▶ syncs k8s/ ─▶ Deployment rolling update (maxSurge 1, maxUnavailable 0)
 ```
 
 CI never talks to the cluster (no `kubectl apply`); git is the only source of truth.
@@ -59,3 +59,67 @@ docker run --rm -v "$PWD/app:/src:ro" -w /src python:3.13-slim sh -c "pip instal
 ```
 
 Verified: `/` → 200 `text/html` with message, version and container hostname; `/healthz` → 200; `id` in the container → `uid=10001(appuser)`; 2 unit tests pass.
+
+## Part 1 – cluster as code
+
+`terraform/main.tf` (local state, git-ignored):
+- `kind_cluster` `gitops`: 1 control-plane + 2 workers, Kubernetes v1.36.4. Host `127.0.0.1:8088` is mapped to Traefik's NodePort `30080`.
+- `helm_release` **traefik**: NodePort Service; publishes `localhost` as the Ingress address so Argo CD can mark the Ingress Healthy.
+- `helm_release` **argocd**: dex and notifications disabled (unused, saves memory); git checked every 60s.
+- `helm_release` **gitops-app** (`argocd-apps` chart): the Argo CD Application for `k8s/`, auto-sync with prune and self-heal. Separate release because it needs the Application CRD from the argo-cd chart.
+
+```bash
+cd terraform
+terraform init
+terraform apply      # ~10 min on a 4 GB Docker VM, mostly image pulls
+terraform destroy    # removes the cluster and everything in it
+```
+
+Verified: `apply` → 4 resources created, 3 nodes Ready; a second `terraform plan` → no changes.
+
+## Part 2 – GitOps deployment
+
+`k8s/` is synced by Argo CD into namespace `web` (created by Argo CD):
+- `deployment.yaml`: 2 replicas; `startupProbe`, `readinessProbe`, `livenessProbe` on `/healthz`; requests 50m/64Mi, limits 500m/128Mi; runs as UID 10001, no privilege escalation, all capabilities dropped; `POD_NAME` from the Downward API.
+- `service.yaml`: ClusterIP, port 80 → 8080.
+- `ingress.yaml`: class `traefik`, no host rule, so http://localhost:8088 works without editing the hosts file.
+
+```bash
+export KUBECONFIG=terraform/gitops-kubeconfig
+kubectl -n argocd get applications          # web  Synced  Healthy
+kubectl -n web get pods,ingress
+# Argo CD UI: https://localhost:8443 (user admin)
+kubectl -n argocd port-forward svc/argocd-server 8443:443
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}'   # base64
+```
+
+Verified: Application `Synced/Healthy`; http://localhost:8088 opens in the browser and shows the message, the commit SHA as version and the serving pod.
+
+## Part 3 – CI/CD
+
+`.github/workflows/ci.yaml`, on push to `main` that changes `app/**` or the workflow:
+1. Log in to GHCR with the built-in `GITHUB_TOKEN` (`packages: write`, `contents: write` only).
+2. Build `app/` and push `ghcr.io/stavgerti/devops-gitops-exercise:<commit SHA>`, with `APP_VERSION=<SHA>`.
+3. `sed` the `image:` line in `k8s/deployment.yaml`, fail unless exactly one line changed, commit `ci: deploy <sha>` and push.
+
+Argo CD sees the new commit and does a rolling update. The deploy commit only touches `k8s/`, so it does not retrigger the workflow.
+The GHCR package is public with no manual visibility change (the repo is public): checked with an anonymous registry token (manifest → 200) and a `docker pull` with empty credentials. The image contains only `app.py`, `requirements.txt` and the base image's environment.
+
+Zero downtime: `maxSurge: 1` / `maxUnavailable: 0`, readiness gating, and a 5s `preStop` sleep so Traefik stops routing to a pod before it gets SIGTERM.
+
+```bash
+python tests/zero_downtime.py http://127.0.0.1:8088/ 420   # ~10 req/s, exit 1 on any failure
+# meanwhile: change the message in app/app.py, commit, push
+```
+
+Verified: message changed and pushed (`8d6f11d`) → CI green → bot commit `8b8737d` → Argo CD rolled out the new image → **3497 requests, 0 failed**, version switched mid-loop.
+
+## Submission summary
+
+**Finished:** Part 0, Part 1, Part 2 and Part 3, each verified as described above. The cluster is left running.
+
+**Missing:** the bonuses (HPA, Prometheus/Grafana via Argo CD, EKS notes). `terraform destroy` is written but was not run on the final cluster, which must stay up. CI builds and deploys but does not run the unit tests.
+
+**One decision and why:** the image comes from a public GHCR package, and CI deploys by committing the new tag to git. The first plan was `kind load` of a local image. That cannot work with CI, because a GitHub runner cannot reach a local cluster. A private package would need a pull secret in the cluster. With a public image and a commit to git, the cluster needs no credentials, CI needs no access to the cluster, and git history shows what is deployed.
+
+**Where the AI was wrong:** the first Deployment had only liveness and readiness probes, with `initialDelaySeconds: 10` on liveness and a 200m CPU limit. After the first sync the Application was `Synced/Healthy`, but both pods showed `RESTARTS 1`. `kubectl get events` showed `Container web failed liveness probe, will be restarted`. Gunicorn plus 2 workers starting under 200m, on nodes still busy with Argo CD, took longer than the probe allowed. The fix was a `startupProbe` (up to 60s before liveness starts) and a 500m CPU limit, deployed through git and Argo CD. After the fix the pods have 0 restarts.

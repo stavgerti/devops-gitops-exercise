@@ -15,7 +15,7 @@ terraform {
 
 locals {
   cluster_name = "gitops"
-  host_port    = 8088 # different from the stopped practice cluster (8080) to avoid clashes
+  host_port    = 8088 # host port the app is opened on: http://localhost:8088
   repo_url     = "https://github.com/stavgerti/devops-gitops-exercise.git"
 }
 
@@ -30,7 +30,7 @@ provider "helm" {
 
 resource "kind_cluster" "this" {
   name = local.cluster_name
-  # Pinned by digest, as kind's release notes recommend.
+  # Kubernetes v1.36.4 node image, pinned by digest so every apply runs the exact same image.
   node_image      = "kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed"
   kubeconfig_path = "${path.module}/${local.cluster_name}-kubeconfig"
   wait_for_ready  = true
@@ -42,7 +42,8 @@ resource "kind_cluster" "this" {
     node {
       role = "control-plane"
 
-      # Windows host 127.0.0.1:8088 -> Traefik NodePort 30080 (kube-proxy serves NodePorts on every node).
+      # Host 127.0.0.1:8088 -> this node's port 30080 = Traefik's NodePort. kube-proxy serves a NodePort on
+      # every node, so mapping only the control-plane is enough wherever the Traefik pod runs.
       extra_port_mappings {
         container_port = 30080
         host_port      = local.host_port
@@ -71,7 +72,7 @@ resource "helm_release" "traefik" {
   timeout          = 600
 
   values = [yamlencode({
-    # Chart v42 reads the Service type from service.spec (service.type is ignored).
+    # Chart v42 sets the Service type under service.spec (default LoadBalancer, which kind cannot provide).
     service = { spec = { type = "NodePort" } }
     ports   = { web = { nodePort = 30080 } }
     providers = {
@@ -96,18 +97,19 @@ resource "helm_release" "argocd" {
   timeout          = 600
 
   values = [yamlencode({
-    # Not needed locally (no SSO, no notifications); saves memory in a 4 GB Docker VM.
+    # Dex (SSO) and notifications are unused here; disabling them saves memory in the 4 GB Docker VM.
     dex           = { enabled = false }
     notifications = { enabled = false }
     configs = {
-      # Poll git every 60s instead of the default 120s so CI deploys roll out faster.
+      # Check git every 60s (+ up to 60s jitter) instead of the default 120s, so CI deploys roll out sooner.
       cm = { "timeout.reconciliation" = "60s" }
     }
   })]
 }
 
-# Bootstrap: the one Argo CD Application that points at k8s/ in this repo. Separate release so the
-# Application CRD (installed by the argo-cd chart) already exists when this is applied.
+# Bootstrap: the one Argo CD Application, which syncs k8s/ from this repo into namespace "web".
+# A separate release (after argocd) because the Application CRD comes from the argo-cd chart and must
+# exist before an Application can be created.
 resource "helm_release" "app" {
   name       = "gitops-app"
   repository = "https://argoproj.github.io/argo-helm"
