@@ -24,7 +24,7 @@ spec:
       containers:
         - name: web
           # Rewritten by .github/workflows/ci.yaml on every deploy (tag = commit SHA). Public GHCR image, no pull secret.
-          image: ghcr.io/stavgerti/devops-gitops-exercise:08a4a9784e5d33cb51adbf27052f69de9d95990f
+          image: ghcr.io/stavgerti/devops-gitops-exercise:8d6f11da9dfdaa53906aeaba8aee28cb8859cfbd
           ports:
             - containerPort: 8080
           env:
