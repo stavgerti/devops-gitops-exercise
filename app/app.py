@@ -6,7 +6,7 @@ from flask import Flask
 
 app = Flask(__name__)
 
-MESSAGE = os.environ.get("APP_MESSAGE", "Hello from the GitOps exercise!")
+MESSAGE = os.environ.get("APP_MESSAGE", "Hello from the GitOps exercise - deployed by CI/CD!")
 VERSION = os.environ.get("APP_VERSION", "dev")
 # Kubernetes sets HOSTNAME to the pod name; POD_NAME (Downward API) wins if set.
 POD_NAME = os.environ.get("POD_NAME") or socket.gethostname()
