@@ -1,0 +1,7 @@
+13:16:09 request 1: version=8d6f11da9dfdaa53906aeaba8aee28cb8859cfbd pod=web-8545f8d444-5hxr9
+13:16:09 request 2: version=8d6f11da9dfdaa53906aeaba8aee28cb8859cfbd pod=web-8545f8d444-phlvs
+13:18:57 request 1349: version=4f2fcf4f74d125aad3cc5995d6f3d9d4c7a55ae5 pod=web-6f9ddf7c9c-bmkcl
+13:19:22 request 1559: version=4f2fcf4f74d125aad3cc5995d6f3d9d4c7a55ae5 pod=web-6f9ddf7c9c-trq6n
+
+3443 requests, 0 failed, 2 version(s) seen
+exit code: 0
